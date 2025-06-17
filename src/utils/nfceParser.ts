@@ -276,7 +276,7 @@ const extractDataFromHTML = (html: string) => {
       if (infoComplementarPanel) {
         const infoTd = infoComplementarPanel.querySelector("table tr td");
         if (infoTd) {
-          extractedData.info_complementar = infoTd.textContent.trim();
+          extractedData.descricao = infoTd.textContent.trim();
         }
       }
       // c) Dados gerais da nota
