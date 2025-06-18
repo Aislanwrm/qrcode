@@ -37,16 +37,15 @@ export const parseNFCeURL = async (qrContent: string) => {
       chave_acesso: chaveAcesso,
       valor_total: valorTotal,
       qr_content: qrContent,
-      empresa_nome: 'Processando dados...',
+      empresa_nome: '',
       empresa_cnpj: '',
       empresa_ie: '',
-      uf: '',
       logradouro: '',
       numero: '',
       bairro: '',
       complemento: '',
       cidade: '',
-      estado: '',
+      uf: '',
       cep: '',
       data_emissao: new Date().toISOString().split('T')[0],
       hora_emissao: new Date().toTimeString().split(' ')[0],
@@ -168,7 +167,7 @@ const extractDataFromHTML = (html: string) => {
       if (partes.length >= 2) {
         extractedData.logradouro = partes[0].trim();
         extractedData.bairro = partes[2].trim();
-        extractedData.estado = partes[4].trim();
+        extractedData.uf = partes[4].trim();
 
         // Extrai o número e possível complemento da segunda parte
         const numeroEComplemento = partes[1].trim();
@@ -186,7 +185,7 @@ const extractDataFromHTML = (html: string) => {
           extractedData.numero = numeroEComplemento.replace(/^0+/, '');
         }
 
-        // Extrai bairro, CEP, cidade e estado se disponíveis
+        // Extrai bairro, CEP, cidade e uf se disponíveis
         if (partes.length >= 3) {
           const CEPCidade = partes[3].split('-');
           if (CEPCidade.length >= 2) {
@@ -322,7 +321,9 @@ const extractDataFromHTML = (html: string) => {
                 extractedData.serie = cells[1].textContent.trim();
                 extractedData.numero_cupom = cells[2].textContent.trim();
                 const dataHora = cells[3].textContent.trim().split(' ');
-                extractedData.data_emissao = dataHora[0] || '';
+                // Converte data  para o formato ISO
+                const [dia, mes, ano] = dataHora[0].split('/');
+                extractedData.data_emissao = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}` || '';
                 extractedData.hora_emissao = dataHora[1] || '';
               }
             }
@@ -335,7 +336,6 @@ const extractDataFromHTML = (html: string) => {
             if (icmsRow) {
               const cells = icmsRow.querySelectorAll("td");
               if (cells.length >= 3) {
-                extractedData.valor_total_servico = parseFloat(cells[0].textContent.replace(/[R\$\s]/g, '').replace(',', '.'));
                 extractedData.base_calculo_icms = parseFloat(cells[1].textContent.replace(/[R\$\s]/g, '').replace(',', '.'));
                 extractedData.valor_icms = parseFloat(cells[2].textContent.replace(/[R\$\s]/g, '').replace(',', '.'));
               }
