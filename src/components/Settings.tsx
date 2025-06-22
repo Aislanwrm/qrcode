@@ -8,6 +8,7 @@ import { Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import TestParser from '@/components/TestParser';
 
 interface UserSettings {
   auto_parse_nfce: boolean;
@@ -138,8 +139,10 @@ const Settings: React.FC = () => {
               {loading ? 'Salvando...' : 'Salvar Configurações'}
             </Button>
           </div>
-
-          <hr className="border-gray-200" />
+      {/* Componente de teste */}
+      <TestParser />
+      
+      {/* Controles de visualização */}
 
           <div className="space-y-3">
             <h3 className="font-medium text-gray-900">Conta</h3>
