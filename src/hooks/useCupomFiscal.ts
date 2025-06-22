@@ -16,7 +16,7 @@ export interface CupomFiscal {
   bairro?: string;
   complemento?: string;
   cidade?: string;
-  estado?: string;
+  uf?: string;
   cep?: string;
   destino_operacao?: number;
   consumidor_final?: number;
