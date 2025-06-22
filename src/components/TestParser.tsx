@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { TestTube, Code } from 'lucide-react';
 
 const TestParser = () => {
-  const [testUrl, setTestUrl] = useState('https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=31250517745613002870650070002821491590653099|2|1|1|86edc633d71dae785899b3e527cdf81eae7512a4');
+  const [testUrl, setTestUrl] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
   const { saveCupom } = useCupomFiscal();
