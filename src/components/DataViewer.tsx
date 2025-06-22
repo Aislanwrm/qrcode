@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useCupomFiscal, CupomFiscal, ItemCompra } from '@/hooks/useCupomFiscal';
-import TestParser from '@/components/TestParser';
 import { Search, Filter, Eye, ShoppingCart, Calendar, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -64,7 +63,8 @@ const DataViewer = () => {
       if (searchTerm) {
         filtered = filtered.filter(item => 
           item.nome_item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.codigo_item?.toLowerCase().includes(searchTerm.toLowerCase())
+          item.codigo_item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cupons.find(cupom => cupom.id === item.cupom_id)?.empresa_nome?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
       
@@ -92,10 +92,6 @@ const DataViewer = () => {
 
   return (
     <div className="space-y-6">
-      {/* Componente de teste */}
-      <TestParser />
-      
-      {/* Controles de visualização */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -137,7 +133,7 @@ const DataViewer = () => {
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
                 <Input
-                  placeholder={viewMode === 'cupons' ? 'Empresa, CNPJ, chave...' : 'Nome ou código do item...'}
+                  placeholder={viewMode === 'cupons' ? 'Empresa, CNPJ, chave...' : 'Empresa ou Nome, código do item...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -145,7 +141,7 @@ const DataViewer = () => {
               </div>
             </div>
 
-            {viewMode === 'cupons' && (
+            { (
               <>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Data Inicial</label>
@@ -170,7 +166,7 @@ const DataViewer = () => {
               <label className="text-sm font-medium mb-1 block">Valor Mínimo</label>
               <Input
                 type="number"
-                placeholder="0.00"
+                placeholder="0,00"
                 value={valueFilter.min}
                 onChange={(e) => setValueFilter(prev => ({ ...prev, min: e.target.value }))}
               />
@@ -181,7 +177,7 @@ const DataViewer = () => {
                 <label className="text-sm font-medium mb-1 block">Valor Máximo</label>
                 <Input
                   type="number"
-                  placeholder="999.99"
+                  placeholder="999,99"
                   value={valueFilter.max}
                   onChange={(e) => setValueFilter(prev => ({ ...prev, max: e.target.value }))}
                 />
@@ -232,23 +228,23 @@ const DataViewer = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Informações da Empresa</h3>
                     <div className="space-y-1 text-sm">
-                      <p><strong>CNPJ:</strong> {selectedCupom.empresa_cnpj || 'Não informado'}</p>
-                      <p><strong>IE:</strong> {selectedCupom.empresa_ie || 'Não informado'}</p>
+                      <p><strong>CNPJ:</strong> {selectedCupom.empresa_cnpj}</p>
+                      <p><strong>IE:</strong> {selectedCupom.empresa_ie}</p>
                       <p><strong>Endereço:</strong> {[selectedCupom.logradouro, selectedCupom.numero, selectedCupom.complemento].filter(Boolean).join(', ')}</p>
-                      <p><strong>Bairro:</strong> {selectedCupom.bairro || 'Não informado'}</p>
-                      <p><strong>Cidade/UF:</strong> {[selectedCupom.cidade, selectedCupom.estado].filter(Boolean).join('/')}</p>
-                      <p><strong>CEP:</strong> {selectedCupom.cep || 'Não informado'}</p>
+                      <p><strong>Bairro:</strong> {selectedCupom.bairro}</p>
+                      <p><strong>Cidade-UF:</strong> {[selectedCupom.cidade, selectedCupom.uf].filter(Boolean).join('-')}</p>
+                      <p><strong>CEP:</strong> {selectedCupom.cep || ''}</p>
                     </div>
                   </div>
                   <div>
                     <h3 className="font-semibold mb-2">Informações do Cupom</h3>
                     <div className="space-y-1 text-sm">
-                      <p><strong>Data:</strong> {selectedCupom.data_emissao || 'Não informado'}</p>
-                      <p><strong>Hora:</strong> {selectedCupom.hora_emissao || 'Não informado'}</p>
-                      <p><strong>Valor Total:</strong> R$ {selectedCupom.valor_total?.toFixed(2) || '0,00'}</p>
-                      <p><strong>Forma Pagamento:</strong> {selectedCupom.forma_pagamento || 'Não informado'}</p>
-                      <p><strong>Protocolo:</strong> {selectedCupom.protocolo || 'Não informado'}</p>
-                      <p><strong>Chave de Acesso:</strong> {selectedCupom.chave_acesso || 'Não informado'}</p>
+                      <p><strong>Data:</strong> {new Date(selectedCupom.data_emissao).toLocaleDateString('pt-BR')}</p>
+                      <p><strong>Hora:</strong> {selectedCupom.hora_emissao}</p>
+                      <p><strong>Valor Total:</strong> R$ {selectedCupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      <p><strong>Forma Pagamento:</strong> {selectedCupom.forma_pagamento}</p>
+                      <p><strong>Protocolo:</strong> {selectedCupom.protocolo}</p>
+                      <p><strong>Chave de Acesso:</strong> {selectedCupom.chave_acesso}</p>
                     </div>
                   </div>
                 </div>
@@ -269,7 +265,7 @@ const DataViewer = () => {
                             <strong>Qtd:</strong> {item.quantidade || 0} {item.unidade || ''}
                           </div>
                           <div className="md:col-span-4">
-                            <strong>Valor:</strong> R$ {item.valor_total?.toFixed(2) || '0,00'}
+                            <strong>Valor:</strong> R$ {item.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </div>
                         </div>
                       </div>
@@ -297,11 +293,10 @@ const DataViewer = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
-                                {cupom.data_emissao || 'Data não informada'}
+                                {new Date(cupom.data_emissao).toLocaleDateString('pt-BR') || 'Data não informada'}
                               </div>
                               <div className="flex items-center gap-1">
-                                <DollarSign className="w-4 h-4" />
-                                R$ {cupom.valor_total?.toFixed(2) || '0,00'}
+                                R$ {cupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                               </div>
                               <div>
                                 <Badge variant="outline">
@@ -349,13 +344,13 @@ const DataViewer = () => {
                           </div>
                           <div className="text-sm">
                             <p><strong>Quantidade:</strong> {item.quantidade || 0} {item.unidade || ''}</p>
-                            <p><strong>Valor:</strong> R$ {item.valor_total?.toFixed(2) || '0,00'}</p>
+                            <p><strong>Valor:</strong> R$ {item.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                           </div>
                           <div className="text-sm">
                             {(item as any).cupom_fiscal && (
                               <>
                                 <p><strong>Empresa:</strong> {(item as any).cupom_fiscal.empresa_nome}</p>
-                                <p><strong>Data:</strong> {(item as any).cupom_fiscal.data_emissao}</p>
+                                <p><strong>Data:</strong> {new Date((item as any).cupom_fiscal.data_emissao).toLocaleDateString('pt-BR')}</p>
                               </>
                             )}
                           </div>
