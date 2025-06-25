@@ -52,6 +52,9 @@ export const parseNFCeURL = async (qrContent: string) => {
       quantidade_itens: 0,
       valor_pago: 0,
       forma_pagamento: '',
+      consumidor_nome: '',
+      consumidor_cpf: '',
+      consumidor_uf: '',
       destino_operacao: '', // Esperado formato numérico (1 ou 0)
       consumidor_final: '',
       presenca_comprador: '',
@@ -259,7 +262,29 @@ const extractDataFromHTML = (html: string) => {
     // 4. Extrair dados do painel accordion
     const accordion = doc.getElementById("accordion");
     if (accordion) {
-      // a) Chave de acesso (no painel "Chave de acesso")
+
+      // a) Dados consumidor
+      const infoconsumidorPanel = Array.from(accordion.querySelectorAll(".panel"))
+        .find(panel => panel.textContent.toLowerCase().includes("consumidor"));
+      if (infoconsumidorPanel) {
+        const collapseDiv = infoconsumidorPanel.querySelector("div.collapse");
+        if (collapseDiv) {
+          const consumidorTable = collapseDiv.querySelector("table.table-hover");
+          if (consumidorTable) {
+            const consumidorRow = consumidorTable.querySelector("tbody tr");
+            if (consumidorRow) {
+              const cells = consumidorRow.querySelectorAll("td");
+              if (cells.length >= 3) {
+                extractedData.consumidor_nome = cells[0].textContent.trim();
+                extractedData.consumidor_cpf = cells[1].textContent.trim();
+                extractedData.consumidor_uf = cells[2].textContent.trim();
+              }
+            }
+          }
+        }
+      }
+
+      // b) Chave de acesso (no painel "Chave de acesso")
       const chavePanel = Array.from(accordion.querySelectorAll(".panel"))
         .find(panel => panel.textContent.toLowerCase().includes("chave de acesso"));
       if (chavePanel) {
@@ -269,7 +294,7 @@ const extractDataFromHTML = (html: string) => {
           console.log('Chave extraída do accordion:', extractedData.chave_acesso);
         }
       }
-      // b) Informações complementares
+      // c) Informações complementares
       const infoComplementarPanel = Array.from(accordion.querySelectorAll(".panel"))
         .find(panel => panel.textContent.toLowerCase().includes("informações complementares"));
       if (infoComplementarPanel) {
@@ -278,7 +303,7 @@ const extractDataFromHTML = (html: string) => {
           extractedData.descricao = infoTd.textContent.trim();
         }
       }
-      // c) Dados gerais da nota
+      // d) Dados gerais da nota
       const infoNotaPanel = Array.from(accordion.querySelectorAll(".panel"))
         .find(panel => panel.textContent.toLowerCase().includes("informações gerais da nota"));
       if (infoNotaPanel) {
