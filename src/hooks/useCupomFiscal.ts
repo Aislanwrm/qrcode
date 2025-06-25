@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +17,9 @@ export interface CupomFiscal {
   cidade?: string;
   uf?: string;
   cep?: string;
+  consumidor_nome?: string;
+  consumidor_cpf?: string;
+  consumidor_uf?: string;
   destino_operacao?: number;
   consumidor_final?: number;
   presenca_comprador?: number;

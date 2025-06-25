@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useCupomFiscal, CupomFiscal, ItemCompra } from '@/hooks/useCupomFiscal';
-import { Search, Filter, Eye, ShoppingCart, Calendar, DollarSign } from 'lucide-react';
+import { Search, Filter, Eye, ShoppingCart, Calendar, DollarSign, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DataViewer = () => {
@@ -21,6 +21,35 @@ const DataViewer = () => {
   const [loading, setLoading] = useState(false);
 
   const { searchCupons, getAllItens } = useCupomFiscal();
+
+  // Função para formatar data de yyyy-mm-dd para dd/mm/yyyy
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    if (dateString.includes('/')) return dateString; // Já está no formato brasileiro
+    
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  // Função para converter data de dd/mm/yyyy para yyyy-mm-dd para comparação
+  const convertDateForComparison = (dateString: string) => {
+    if (!dateString) return '';
+    if (dateString.includes('-')) return dateString; // Já está no formato ISO
+    
+    const [day, month, year] = dateString.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
+  // Função para calcular soma dos valores
+  const calculateTotal = () => {
+    if (selectedCupom) {
+      return filteredItens.reduce((sum, item) => sum + (item.valor_total || 0), 0);
+    } else if (viewMode === 'cupons') {
+      return filteredCupons.reduce((sum, cupom) => sum + (cupom.valor_total || 0), 0);
+    } else {
+      return filteredItens.reduce((sum, item) => sum + (item.valor_total || 0), 0);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -60,14 +89,39 @@ const DataViewer = () => {
     } else {
       let filtered = allItens;
       
+      // Filtro por nome do item, código ou empresa
       if (searchTerm) {
         filtered = filtered.filter(item => 
           item.nome_item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.codigo_item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cupons.find(cupom => cupom.id === item.cupom_id)?.empresa_nome?.toLowerCase().includes(searchTerm.toLowerCase())
+          (item as any).cupom_fiscal?.empresa_nome?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
       
+      // Filtro por data (baseado na data de emissão do cupom)
+      if (dateFilter.start) {
+        filtered = filtered.filter(item => {
+          const cupomData = (item as any).cupom_fiscal?.data_emissao;
+          if (!cupomData) return false;
+          
+          // Converter data para formato de comparação (yyyy-mm-dd)
+          const dataComparacao = convertDateForComparison(cupomData);
+          return dataComparacao >= dateFilter.start;
+        });
+      }
+      
+      if (dateFilter.end) {
+        filtered = filtered.filter(item => {
+          const cupomData = (item as any).cupom_fiscal?.data_emissao;
+          if (!cupomData) return false;
+          
+          // Converter data para formato de comparação (yyyy-mm-dd)
+          const dataComparacao = convertDateForComparison(cupomData);
+          return dataComparacao <= dateFilter.end;
+        });
+      }
+      
+      // Filtros de valor
       if (valueFilter.min) {
         const minValue = parseFloat(valueFilter.min);
         filtered = filtered.filter(item => (item.valor_total || 0) >= minValue);
@@ -133,7 +187,7 @@ const DataViewer = () => {
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
                 <Input
-                  placeholder={viewMode === 'cupons' ? 'Empresa, CNPJ, chave...' : 'Empresa ou Nome, código do item...'}
+                  placeholder={viewMode === 'cupons' ? 'Empresa, CNPJ, chave...' : 'Empresa, Nome do item, código...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -141,26 +195,23 @@ const DataViewer = () => {
               </div>
             </div>
 
-            { (
-              <>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Data Inicial</label>
-                  <Input
-                    type="date"
-                    value={dateFilter.start}
-                    onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Data Final</label>
-                  <Input
-                    type="date"
-                    value={dateFilter.end}
-                    onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
-                  />
-                </div>
-              </>
-            )}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Data Inicial</label>
+              <Input
+                type="date"
+                value={dateFilter.start}
+                onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1 block">Data Final</label>
+              <Input
+                type="date"
+                value={dateFilter.end}
+                onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
+              />
+            </div>
 
             <div>
               <label className="text-sm font-medium mb-1 block">Valor Mínimo</label>
@@ -224,48 +275,63 @@ const DataViewer = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div>
                     <h3 className="font-semibold mb-2">Informações da Empresa</h3>
                     <div className="space-y-1 text-sm">
-                      <p><strong>CNPJ:</strong> {selectedCupom.empresa_cnpj}</p>
-                      <p><strong>IE:</strong> {selectedCupom.empresa_ie}</p>
+                      <p><strong>CNPJ:</strong> {selectedCupom.empresa_cnpj || ''}</p>
+                      <p><strong>IE:</strong> {selectedCupom.empresa_ie || ''}</p>
                       <p><strong>Endereço:</strong> {[selectedCupom.logradouro, selectedCupom.numero, selectedCupom.complemento].filter(Boolean).join(', ')}</p>
-                      <p><strong>Bairro:</strong> {selectedCupom.bairro}</p>
+                      <p><strong>Bairro:</strong> {selectedCupom.bairro || ''}</p>
                       <p><strong>Cidade-UF:</strong> {[selectedCupom.cidade, selectedCupom.uf].filter(Boolean).join('-')}</p>
                       <p><strong>CEP:</strong> {selectedCupom.cep || ''}</p>
                     </div>
                   </div>
                   <div>
+                    <h3 className="font-semibold mb-2">Informações do Consumidor</h3>
+                    <div className="space-y-1 text-sm">
+                      <p><strong>Nome:</strong> {selectedCupom.consumidor_nome || ''}</p>
+                      <p><strong>CPF:</strong> {selectedCupom.consumidor_cpf || ''}</p>
+                      <p><strong>UF:</strong> {selectedCupom.consumidor_uf || ''}</p>
+                    </div>
+                  </div>
+                  <div>
                     <h3 className="font-semibold mb-2">Informações do Cupom</h3>
                     <div className="space-y-1 text-sm">
-                      <p><strong>Data:</strong> {new Date(selectedCupom.data_emissao).toLocaleDateString('pt-BR')}</p>
-                      <p><strong>Hora:</strong> {selectedCupom.hora_emissao}</p>
-                      <p><strong>Valor Total:</strong> R$ {selectedCupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      <p><strong>Forma Pagamento:</strong> {selectedCupom.forma_pagamento}</p>
-                      <p><strong>Protocolo:</strong> {selectedCupom.protocolo}</p>
-                      <p><strong>Chave de Acesso:</strong> {selectedCupom.chave_acesso}</p>
+                      <p><strong>Data:</strong> {formatDate(selectedCupom.data_emissao || '')}</p>
+                      <p><strong>Hora:</strong> {selectedCupom.hora_emissao || ''}</p>
+                      <p><strong>Valor Total:</strong> R$ {selectedCupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
+                      <p><strong>Forma Pagamento:</strong> {selectedCupom.forma_pagamento || ''}</p>
+                      <p><strong>Protocolo:</strong> {selectedCupom.protocolo || ''}</p>
+                      <p><strong>Chave de Acesso:</strong> {selectedCupom.chave_acesso || ''}</p>
                     </div>
                   </div>
                 </div>
 
-                <h3 className="font-semibold mb-3">Itens do Cupom ({filteredItens.length})</h3>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-semibold">Itens do Cupom ({filteredItens.length})</h3>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Calculator className="w-4 h-4" />
+                    Total: R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+
                 {filteredItens.length > 0 ? (
                   <div className="space-y-2">
                     {filteredItens.map((item, index) => (
                       <div key={item.id || index} className="border rounded-lg p-3">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
                           <div>
-                            <strong>Código:</strong> {item.codigo_item || 'N/A'}
+                            <strong>Código:</strong> {item.codigo_item || ''}
                           </div>
                           <div className="md:col-span-2">
-                            <strong>Item:</strong> {item.nome_item || 'Nome não informado'}
+                            <strong>Item:</strong> {item.nome_item || ''}
                           </div>
                           <div>
                             <strong>Qtd:</strong> {item.quantidade || 0} {item.unidade || ''}
                           </div>
                           <div className="md:col-span-4">
-                            <strong>Valor:</strong> R$ {item.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            <strong>Valor:</strong> R$ {(item.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </div>
                         </div>
                       </div>
@@ -280,7 +346,13 @@ const DataViewer = () => {
             /* Lista de cupons */
             <Card>
               <CardHeader>
-                <CardTitle>Cupons Fiscais ({filteredCupons.length})</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Cupons Fiscais ({filteredCupons.length})</CardTitle>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Calculator className="w-4 h-4" />
+                    Total: R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {filteredCupons.length > 0 ? (
@@ -293,7 +365,7 @@ const DataViewer = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
-                                {new Date(cupom.data_emissao).toLocaleDateString('pt-BR') || 'Data não informada'}
+                                {formatDate(cupom.data_emissao || '') || 'Data não informada'}
                               </div>
                               <div className="flex items-center gap-1">
                                 R$ {cupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
@@ -327,10 +399,16 @@ const DataViewer = () => {
               </CardContent>
             </Card>
           ) : (
-            /* Lista de todos os itens */
+            /* Lista de todos os itens com filtros aplicados */
             <Card>
               <CardHeader>
-                <CardTitle>Todos os Itens ({filteredItens.length})</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Todos os Itens ({filteredItens.length})</CardTitle>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Calculator className="w-4 h-4" />
+                    Total: R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {filteredItens.length > 0 ? (
@@ -350,7 +428,7 @@ const DataViewer = () => {
                             {(item as any).cupom_fiscal && (
                               <>
                                 <p><strong>Empresa:</strong> {(item as any).cupom_fiscal.empresa_nome}</p>
-                                <p><strong>Data:</strong> {new Date((item as any).cupom_fiscal.data_emissao).toLocaleDateString('pt-BR')}</p>
+                                <p><strong>Data:</strong> {formatDate((item as any).cupom_fiscal.data_emissao)}</p>
                               </>
                             )}
                           </div>
