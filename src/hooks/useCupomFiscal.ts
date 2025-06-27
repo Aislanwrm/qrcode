@@ -81,24 +81,58 @@ export const useCupomFiscal = () => {
     if (!user) return false;
 
     try {
-      // Verificar se já existe um cupom com o mesmo QR content
-      const { data: existingCupom } = await supabase
-        .from('cupom_fiscal')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('qr_content', cupomData.qr_content)
-        .single();
+      console.log('Verificando duplicatas para:', cupomData.qr_content?.substring(0, 50) + '...');
+      
+      // Verificar duplicatas usando uma abordagem mais robusta
+      // Primeiro, buscar pela chave de acesso se disponível
+      let existingCupom = null;
+      
+      if (cupomData.chave_acesso && cupomData.chave_acesso.length === 44) {
+        console.log('Verificando por chave de acesso:', cupomData.chave_acesso);
+        const { data: cupomByChave } = await supabase
+          .from('cupom_fiscal')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('chave_acesso', cupomData.chave_acesso)
+          .maybeSingle();
+        
+        existingCupom = cupomByChave;
+      }
+      
+      // Se não encontrou pela chave, buscar pelo hash do QR content para evitar URLs muito longas
+      if (!existingCupom && cupomData.qr_content) {
+        console.log('Verificando por QR content (primeiros 100 caracteres)');
+        const qrStart = cupomData.qr_content.substring(0, 100);
+        
+        const { data: allUserCupons } = await supabase
+          .from('cupom_fiscal')
+          .select('id, qr_content')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50); // Limitar para evitar busca muito pesada
+        
+        if (allUserCupons) {
+          existingCupom = allUserCupons.find(cupom => 
+            cupom.qr_content === cupomData.qr_content
+          );
+        }
+      }
 
       if (existingCupom) {
+        console.log('Cupom duplicado encontrado');
         toast.error('Este QR code já foi escaneado anteriormente');
         return false;
       }
+
+      console.log('Nenhuma duplicata encontrada, salvando cupom...');
 
       // Extrair itens do cupomData se existirem
       const itemsToSave = itens || (cupomData as any).itens || [];
 
       // Preparar dados do cupom (remover itens se existirem no objeto)
       const { itens: _, ...cleanCupomData } = cupomData as any;
+
+      console.log('Dados limpos para salvar:', cleanCupomData);
 
       // Inserir cupom fiscal
       const { data: newCupom, error: cupomError } = await supabase
@@ -107,10 +141,16 @@ export const useCupomFiscal = () => {
         .select()
         .single();
 
-      if (cupomError) throw cupomError;
+      if (cupomError) {
+        console.error('Erro ao inserir cupom:', cupomError);
+        throw cupomError;
+      }
+
+      console.log('Cupom salvo com sucesso:', newCupom);
 
       // Inserir itens se fornecidos
       if (itemsToSave && itemsToSave.length > 0 && newCupom) {
+        console.log('Salvando', itemsToSave.length, 'itens...');
         const itensWithCupomId = itemsToSave.map((item: any) => ({
           ...item,
           cupom_id: newCupom.id
@@ -120,7 +160,11 @@ export const useCupomFiscal = () => {
           .from('itens_compra')
           .insert(itensWithCupomId);
 
-        if (itensError) throw itensError;
+        if (itensError) {
+          console.error('Erro ao inserir itens:', itensError);
+          throw itensError;
+        }
+        console.log('Itens salvos com sucesso');
       }
 
       const itemCount = itemsToSave.length;
@@ -129,7 +173,7 @@ export const useCupomFiscal = () => {
       return true;
     } catch (error) {
       console.error('Erro ao salvar cupom:', error);
-      toast.error('Erro ao salvar cupom fiscal');
+      toast.error('Erro ao salvar cupom fiscal: ' + (error as Error).message);
       return false;
     }
   };
