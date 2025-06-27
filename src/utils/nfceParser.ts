@@ -47,14 +47,14 @@ export const parseNFCeURL = async (qrContent: string) => {
       cidade: '',
       uf: '',
       cep: '',
+      consumidor_nome: '',
+      consumidor_cpf: '',
+      consumidor_uf: '',
       data_emissao: new Date().toISOString().split('T')[0],
       hora_emissao: new Date().toTimeString().split(' ')[0],
       quantidade_itens: 0,
       valor_pago: 0,
       forma_pagamento: '',
-      consumidor_nome: '',
-      consumidor_cpf: '',
-      consumidor_uf: '',
       destino_operacao: '', // Esperado formato numérico (1 ou 0)
       consumidor_final: '',
       presenca_comprador: '',
@@ -390,7 +390,14 @@ const extractDataFromHTML = (html: string) => {
 };
 
 export const detectDataType = (content: string): string => {
-  if (content.includes('nfce.fazenda') || content.includes('chNFe=')) {
+  // Verificar se é NFC-e primeiro (mais específico)
+  if (content.includes('nfce.fazenda') || 
+      content.includes('chNFe=') || 
+      content.includes('portalnfce') ||
+      content.includes('portalsped.fazenda') ||
+      content.includes('nfce.sefaz') ||
+      content.includes('dfe-portal.svrs.rs.gov.br') ||
+      /\|\d+\|\d+\|\d+\|[A-F0-9]{40}$/i.test(content)) {
     return 'NFC-e';
   } else if (content.startsWith('http://') || content.startsWith('https://')) {
     return 'URL';
