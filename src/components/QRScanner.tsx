@@ -1,260 +1,91 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Camera, QrCode, ZoomIn, ZoomOut, Flashlight, FlashlightOff } from 'lucide-react';
+import { Camera, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
-import QrScanner from 'qr-scanner';
 import { useCupomFiscal } from '@/hooks/useCupomFiscal';
 import { parseNFCeURL, detectDataType } from '@/utils/nfceParser';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useCameraCapabilities } from '@/hooks/useCameraCapabilities';
+import { useQRScanner } from '@/hooks/useQRScanner';
+import { useFlashControl } from '@/hooks/useFlashControl';
+import CameraControls from '@/components/CameraControls';
+import ScannerStatusIndicators from '@/components/ScannerStatusIndicators';
 
 interface QRScannerProps {
   onDataScanned: () => void;
 }
 
 const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
-  const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string>('');
-  const [cameraError, setCameraError] = useState<string>('');
-  const [flashEnabled, setFlashEnabled] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(2);
-  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
-  const [pendingData, setPendingData] = useState<string>('');
+  const [currentCamera, setCurrentCamera] = useState<'environment' | 'user'>('environment');
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<QrScanner | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   
   const { saveCupom } = useCupomFiscal();
   const { user } = useAuth();
 
-  const startScanning = async () => {
-    try {
-      setCameraError('');
-      console.log('Iniciando scanner...');
-      
-      if (!videoRef.current) {
-        console.error('Video element não encontrado');
-        toast.error('Erro: elemento de vídeo não encontrado');
-        return;
-      }
+  const {
+    flashSupported,
+    focusSupported,
+    availableCameras,
+    streamRef,
+    checkCameraCapabilities,
+    listAvailableCameras
+  } = useCameraCapabilities();
 
-      const hasCamera = await QrScanner.hasCamera();
-      console.log('Dispositivo tem câmera:', hasCamera);
-      
-      if (!hasCamera) {
-        toast.error('Nenhuma câmera encontrada no dispositivo');
-        return;
-      }
+  const { flashEnabled, toggleFlash, setFlashEnabled } = useFlashControl(streamRef, flashSupported);
 
-      if (qrScannerRef.current) {
-        qrScannerRef.current.destroy();
-        qrScannerRef.current = null;
-      }
+  const {
+    isScanning,
+    cameraError,
+    zoomLevel,
+    videoRef,
+    startScanning,
+    stopScanning,
+    handleZoomIn,
+    handleZoomOut
+  } = useQRScanner({
+    onDataScanned: saveScannedData,
+    onStreamReady: (stream) => {
+      streamRef.current = stream;
+      checkCameraCapabilities();
+      listAvailableCameras();
+    },
+    currentCamera
+  });
 
-      console.log('Criando novo QrScanner...');
-      
-      const video = videoRef.current;
-      video.style.display = 'block';
-      video.style.visibility = 'visible';
-      video.style.opacity = '1';
-      
-      qrScannerRef.current = new QrScanner(
-        video,
-        (result) => {
-          console.log('QR Code detectado:', result.data);
-          setScannedData(result.data);
-          
-          // Parar o scanner imediatamente para evitar múltiplas leituras
-          if (qrScannerRef.current) {
-            qrScannerRef.current.pause();
-          }
-          
-          // Processar os dados
-          saveScannedData(result.data);
-        },
-        {
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          preferredCamera: 'environment',
-          maxScansPerSecond: 2, // Reduzir para evitar múltiplas leituras
-        }
-      );
-      
-      console.log('Iniciando scanner...');
-      await qrScannerRef.current.start();
-      
-      if (video.srcObject instanceof MediaStream) {
-        streamRef.current = video.srcObject;
-        await applyZoom(zoomLevel);
-      }
-      
+  const switchCamera = async () => {
+    if (availableCameras.length < 2) {
+      toast.error('Apenas uma câmera disponível');
+      return;
+    }
+
+    const newCamera = currentCamera === 'environment' ? 'user' : 'environment';
+    setCurrentCamera(newCamera);
+    
+    if (isScanning) {
+      stopScanning();
       setTimeout(() => {
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          console.log('Vídeo carregado com dimensões:', video.videoWidth, 'x', video.videoHeight);
-        } else {
-          console.warn('Vídeo não possui dimensões válidas');
-          video.play().catch(console.error);
-        }
-      }, 1000);
-      
-      setIsScanning(true);
-      console.log('Scanner iniciado com sucesso');
-      toast.success('Scanner iniciado! Toque na tela para focar');
-      
-    } catch (error) {
-      console.error('Erro detalhado ao iniciar scanner:', error);
-      setCameraError(`Erro ao acessar a câmera: ${error}`);
-      
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          toast.error('Permissão de câmera negada. Permita o acesso à câmera.');
-        } else if (error.name === 'NotFoundError') {
-          toast.error('Câmera não encontrada no dispositivo.');
-        } else if (error.name === 'NotSupportedError') {
-          toast.error('Câmera não suportada neste navegador.');
-        } else {
-          toast.error(`Erro ao acessar a câmera: ${error.message}`);
-        }
-      } else {
-        toast.error('Erro desconhecido ao acessar a câmera');
-      }
-      
-      setIsScanning(false);
-    }
-  };
-
-  const stopScanning = () => {
-    console.log('Parando scanner...');
-    if (qrScannerRef.current) {
-      qrScannerRef.current.stop();
-      qrScannerRef.current.destroy();
-      qrScannerRef.current = null;
+        startScanning();
+      }, 500);
     }
     
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    
-    if (videoRef.current) {
-      videoRef.current.style.display = 'none';
-    }
-    
-    setIsScanning(false);
-    setCameraError('');
-    setFlashEnabled(false);
-    console.log('Scanner parado');
-  };
-
-  const applyZoom = async (zoom: number) => {
-    if (!streamRef.current || !videoRef.current) return;
-
-    const videoTrack = streamRef.current.getVideoTracks()[0];
-    
-    if (videoTrack && 'getCapabilities' in videoTrack) {
-      try {
-        const capabilities = (videoTrack as any).getCapabilities();
-        if (capabilities.zoom) {
-          await (videoTrack as any).applyConstraints({
-            advanced: [{ zoom: zoom }]
-          });
-          console.log(`Zoom nativo aplicado: ${zoom}x`);
-          return;
-        }
-      } catch (error) {
-        console.log('Zoom nativo não suportado:', error);
-      }
-    }
-    
-    videoRef.current.style.transform = `scale(${zoom})`;
-    videoRef.current.style.transformOrigin = 'center';
-    console.log(`Zoom CSS aplicado: ${zoom}x`);
-  };
-
-  const handleZoomIn = async () => {
-    const newZoom = Math.min(zoomLevel + 0.5, 5);
-    setZoomLevel(newZoom);
-    await applyZoom(newZoom);
-  };
-
-  const handleZoomOut = async () => {
-    const newZoom = Math.max(zoomLevel - 0.5, 1);
-    setZoomLevel(newZoom);
-    await applyZoom(newZoom);
-  };
-
-  const toggleFlash = async () => {
-    if (!streamRef.current) {
-      console.log('Stream de vídeo não disponível');
-      toast.error('Stream de vídeo não disponível');
-      return;
-    }
-
-    const videoTrack = streamRef.current.getVideoTracks()[0];
-    
-    if (!videoTrack) {
-      console.log('Track de vídeo não disponível');
-      toast.error('Track de vídeo não disponível');
-      return;
-    }
-    
-    console.log('Tentando controlar flash...');
-    
-    try {
-      // Verificar se o dispositivo suporta torch
-      if ('getCapabilities' in videoTrack) {
-        const capabilities = (videoTrack as any).getCapabilities();
-        console.log('Capacidades da câmera:', capabilities);
-        
-        if (capabilities.torch) {
-          console.log('Torch disponível, aplicando configuração...');
-          await (videoTrack as any).applyConstraints({
-            advanced: [{ torch: !flashEnabled }]
-          });
-          setFlashEnabled(!flashEnabled);
-          toast.success(flashEnabled ? 'Flash desligado' : 'Flash ligado');
-          return;
-        } else {
-          console.log('Torch não suportado');
-        }
-      }
-      
-      // Fallback para fillLightMode
-      if ('getCapabilities' in videoTrack) {
-        const capabilities = (videoTrack as any).getCapabilities();
-        if (capabilities.fillLightMode && capabilities.fillLightMode.includes('flash')) {
-          console.log('Usando fillLightMode como fallback...');
-          await (videoTrack as any).applyConstraints({
-            advanced: [{ fillLightMode: flashEnabled ? 'off' : 'flash' }]
-          });
-          setFlashEnabled(!flashEnabled);
-          toast.success(flashEnabled ? 'Flash desligado' : 'Flash ligado');
-          return;
-        }
-      }
-      
-      console.log('Flash não suportado por este dispositivo/navegador');
-      toast.error('Flash não disponível neste dispositivo');
-      
-    } catch (error) {
-      console.error('Erro ao controlar flash:', error);
-      toast.error('Erro ao controlar o flash');
-    }
+    toast.success(`Alternando para câmera ${newCamera === 'environment' ? 'traseira' : 'frontal'}`);
   };
 
   const handleVideoClick = async (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!focusSupported) {
+      const video = videoRef.current;
+      if (video) {
+        video.style.filter = 'brightness(1.2)';
+        setTimeout(() => {
+          video.style.filter = 'brightness(1)';
+        }, 200);
+      }
+      toast.info('Foco automático não disponível - QR posicionado na área central');
+      return;
+    }
+
     if (!streamRef.current || !videoRef.current) return;
 
     const rect = videoRef.current.getBoundingClientRect();
@@ -281,11 +112,9 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
         console.log('Foco por toque não suportado:', error);
       }
     }
-    
-    toast.success('Toque registrado - tentando focar');
   };
 
-  const saveScannedData = async (content: string) => {
+  async function saveScannedData(content: string) {
     console.log('=== INÍCIO DO PROCESSAMENTO ===');
     console.log('Conteúdo escaneado:', content);
     
@@ -301,6 +130,8 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
     }
 
     setIsProcessing(true);
+    setScannedData(content);
+    
     const dataType = detectDataType(content);
     console.log('Tipo de dados detectado:', dataType);
     
@@ -308,21 +139,17 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
       if (dataType === 'NFC-e') {
         console.log('✅ Processando como NFC-e...');
         
-        // Mostrar toast de processamento
         toast.info('Processando dados da NFC-e... Aguarde alguns segundos');
         
-        // IMPORTANTE: Aguardar um pouco para garantir que a UI seja atualizada
         await new Promise(resolve => setTimeout(resolve, 100));
         
         console.log('Chamando parseNFCeURL...');
         const nfceData = await parseNFCeURL(content);
         console.log('Dados extraídos da NFC-e:', nfceData);
         
-        // Verificar se os dados foram extraídos com sucesso
         if (nfceData) {
           console.log('Dados extraídos com sucesso, verificando qualidade...');
           
-          // Verificar se temos dados essenciais
           const hasEssentialData = nfceData.empresa_nome && 
                                    nfceData.empresa_nome !== 'Dados básicos do QR Code' &&
                                    nfceData.empresa_nome !== 'NFC-e (dados parciais)' &&
@@ -344,7 +171,6 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
             console.log('⚠️ Dados incompletos, salvando dados básicos...');
             toast.warning('Dados da NFC-e extraídos parcialmente');
             
-            // Salvar pelo menos os dados básicos
             const cupomBasico = {
               qr_content: content,
               chave_acesso: nfceData.chave_acesso || '',
@@ -365,7 +191,6 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
           console.log('❌ Nenhum dado extraído da NFC-e');
           toast.error('Não foi possível extrair dados da NFC-e');
           
-          // Salvar pelo menos o QR code
           const cupomBasico = {
             qr_content: content,
             empresa_nome: 'QR Code NFC-e',
@@ -379,7 +204,6 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
       } else {
         console.log('❌ Processando QR code não-NFC-e como:', dataType);
         
-        // Para outros tipos de QR, salvar como cupom simples
         const cupomData = {
           qr_content: content,
           empresa_nome: `QR Code ${dataType}`,
@@ -400,12 +224,17 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
       console.log('=== FIM DO PROCESSAMENTO ===');
       setIsProcessing(false);
     }
+  }
+
+  const handleStopScanning = () => {
+    stopScanning();
+    setFlashEnabled(false);
   };
 
   useEffect(() => {
     return () => {
-      if (qrScannerRef.current) {
-        qrScannerRef.current.destroy();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -444,54 +273,23 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
               </div>
             )}
 
-            {/* Controles de câmera */}
             {isScanning && (
-              <div className="absolute top-2 right-2 flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={toggleFlash}
-                  className="w-10 h-10 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-0"
-                >
-                  {flashEnabled ? 
-                    <FlashlightOff className="w-4 h-4" /> : 
-                    <Flashlight className="w-4 h-4" />
-                  }
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleZoomIn}
-                  className="w-10 h-10 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-0"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleZoomOut}
-                  className="w-10 h-10 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-0"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-
-            {/* Indicador de zoom */}
-            {isScanning && (
-              <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                {zoomLevel}x
-              </div>
-            )}
-
-            {/* Indicador de processamento */}
-            {isProcessing && (
-              <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                <div className="bg-white p-4 rounded-lg text-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-sm">Processando NFC-e...</p>
-                </div>
-              </div>
+              <>
+                <CameraControls
+                  flashEnabled={flashEnabled}
+                  flashSupported={flashSupported}
+                  onToggleFlash={toggleFlash}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                  onSwitchCamera={switchCamera}
+                />
+                <ScannerStatusIndicators
+                  flashSupported={flashSupported}
+                  focusSupported={focusSupported}
+                  zoomLevel={zoomLevel}
+                  isProcessing={isProcessing}
+                />
+              </>
             )}
           </div>
 
@@ -513,7 +311,7 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
               </Button>
             ) : (
               <Button 
-                onClick={stopScanning}
+                onClick={handleStopScanning}
                 variant="destructive"
                 disabled={isProcessing}
                 className="px-8 py-3 rounded-full transition-all duration-200 transform hover:scale-105"
@@ -524,8 +322,18 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
           </div>
 
           {isScanning && (
-            <div className="text-center text-sm text-gray-600">
-              <p>Toque na tela para focar • Use os botões para zoom e flash</p>
+            <div className="text-center text-sm text-gray-600 space-y-1">
+              <p>
+                {focusSupported 
+                  ? "Toque na tela para focar" 
+                  : "Posicione o QR code na área central"
+                } • Use os botões para zoom
+                {flashSupported && " e flash"}
+              </p>
+              <p className="text-xs text-gray-500">
+                Câmera: {currentCamera === 'environment' ? 'Traseira' : 'Frontal'}
+                {availableCameras.length > 1 && ' (toque para alternar)'}
+              </p>
               {isProcessing && <p className="text-blue-600 font-medium">Processando dados da NFC-e...</p>}
             </div>
           )}
