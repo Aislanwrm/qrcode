@@ -54,6 +54,7 @@ Empresa: ${item.empresa_nome || 'N/A'}
 CNPJ: ${item.empresa_cnpj || 'N/A'}
 Chave de Acesso: ${item.chave_acesso || 'N/A'}
 Valor Total: R$ ${item.valor_total?.toFixed(2) || '0,00'}
+Valor Pago: R$ ${item.valor_pago?.toFixed(2) || '0,00'}
 Conteúdo QR: ${item.qr_content}
 ${'-'.repeat(50)}`;
     }).join('\n\n');

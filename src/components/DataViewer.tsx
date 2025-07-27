@@ -301,6 +301,7 @@ const DataViewer = () => {
                       <p><strong>Data:</strong> {formatDate(selectedCupom.data_emissao || '')}</p>
                       <p><strong>Hora:</strong> {selectedCupom.hora_emissao || ''}</p>
                       <p><strong>Valor Total:</strong> R$ {selectedCupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
+                      <p><strong>Valor Pago:</strong> R$ {selectedCupom.valor_pago?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
                       <p><strong>Forma Pagamento:</strong> {selectedCupom.forma_pagamento || ''}</p>
                       <p><strong>Protocolo:</strong> {selectedCupom.protocolo || ''}</p>
                       <p><strong>Chave de Acesso:</strong> {selectedCupom.chave_acesso || ''}</p>
