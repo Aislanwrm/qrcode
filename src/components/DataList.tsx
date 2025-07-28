@@ -193,9 +193,10 @@ const DataList: React.FC<DataListProps> = ({ onDataChanged }) => {
                         </p>
                       )}
                       
-                      <p className="text-gray-800 break-all font-mono text-xs bg-gray-50 p-2 rounded truncate">
+                      <a href={item.qr_content} target="_blank" rel="noopener noreferrer"
+                        className="text-gray-800 break-all font-mono text-xs bg-gray-50 p-2 rounded truncate">
                         {item.qr_content}
-                      </p>
+                      </a>
                     </div>
                     <div className="flex gap-2">
                       <Button 
