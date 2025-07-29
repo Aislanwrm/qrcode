@@ -266,7 +266,7 @@ const DataViewer = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle>Detalhes do Cupom</CardTitle>
+                    <CardTitle className="mb-2">Detalhes do Cupom</CardTitle>
                     <p className="text-sm text-gray-600">{selectedCupom.empresa_nome}</p>
                   </div>
                   <Button onClick={() => setSelectedCupom(null)} variant="outline" size="sm">
@@ -302,6 +302,7 @@ const DataViewer = () => {
                       <p><strong>Hora:</strong> {selectedCupom.hora_emissao || ''}</p>
                       <p><strong>Valor Total:</strong> R$ {selectedCupom.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
                       <p><strong>Valor Pago:</strong> R$ {selectedCupom.valor_pago?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
+                      <p><strong>Desconto:</strong> R$ {(selectedCupom.valor_total-selectedCupom.valor_pago)?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
                       <p><strong>Forma Pagamento:</strong> {selectedCupom.forma_pagamento || ''}</p>
                       <p><strong>Protocolo:</strong> {selectedCupom.protocolo || ''}</p>
                       <p><strong>Chave de Acesso:</strong> {selectedCupom.chave_acesso || ''}</p>
@@ -319,23 +320,57 @@ const DataViewer = () => {
 
                 {filteredItens.length > 0 ? (
                   <div className="space-y-2">
+                    <div className="hidden lg:grid sticky top-0 z-10 grid-cols-5 gap-1 text-sm bg-gray-100 border rounded-lg p-4">
+                      <div><strong>Código</strong></div>
+                      <div><strong>Item</strong></div>
+                      <div><strong>Quantidade</strong></div>
+                      <div><strong>Preço unitário</strong></div>
+                      <div><strong>Valor total</strong></div>
+                    </div>
                     {filteredItens.map((item, index) => (
-                      <div key={item.id || index} className="border rounded-lg p-3">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
-                          <div>
-                            <strong>Código:</strong> {item.codigo_item || ''}
-                          </div>
-                          <div className="md:col-span-2">
-                            <strong>Item:</strong> {item.nome_item || ''}
-                          </div>
-                          <div>
-                            <strong>Qtd:</strong> {item.quantidade || 0} {item.unidade || ''}
-                          </div>
-                          <div className="md:col-span-4">
-                            <strong>Valor:</strong> R$ {(item.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      <React.Fragment key={item.id || index}>
+
+                        {/* ✅ VERSÃO MOBILE */}
+                        <div className="block lg:hidden border rounded-lg p-3">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
+                            <div>
+                              <strong>Código:</strong> {item.codigo_item || ''}
+                            </div>
+                            <div>
+                              <strong>Item:</strong> {item.nome_item || ''}
+                            </div>
+                            <div>
+                              <strong>Quantidade:</strong> {item.quantidade || 0} {item.unidade.toLowerCase() || ''}
+                            </div>
+                            <div>
+                              <strong>Preço unitário:</strong> R$ {((item.valor_total/item.quantidade) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </div>
+                            <div>
+                              <strong>Valor total:</strong> R$ {(item.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                        {/* 💻 VERSÃO DESKTOP */}
+                        <div className="hidden lg:grid border rounded-lg p-4">
+                          <div className="grid grid-cols-5 gap-2 text-sm">
+                            <div>
+                              {item.codigo_item || ''}
+                            </div>
+                            <div>
+                              {item.nome_item || ''}
+                            </div>
+                            <div>
+                              {item.quantidade || 0} {item.unidade.toLowerCase() || ''}
+                            </div>
+                            <div>
+                              R$ {(item.valor_total / item.quantidade || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </div>
+                            <div>
+                              R$ {(item.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+                      </React.Fragment>
                     ))}
                   </div>
                 ) : (
@@ -414,33 +449,92 @@ const DataViewer = () => {
               <CardContent>
                 {filteredItens.length > 0 ? (
                   <div className="space-y-3">
+
+                    <div className="hidden lg:grid sticky top-0 z-10 grid-cols-8 gap-1 text-sm bg-gray-100 border rounded-lg p-4">
+                      <div><strong>Código</strong></div>
+                      <div><strong>Item</strong></div>
+                      <div><strong>Quantidade</strong></div>
+                      <div><strong>Preço unitário</strong></div>
+                      <div><strong>Valor total</strong></div>
+                      <div><strong>Empresa</strong></div>
+                      <div><strong>Data</strong></div>
+                      <div><strong>Item #</strong></div>
+                    </div>                    
+
                     {filteredItens.map((item, index) => (
-                      <div key={item.id || index} className="border rounded-lg p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <div>
-                            <p className="font-semibold">{item.nome_item || 'Item sem nome'}</p>
-                            <p className="text-sm text-gray-600">Código: {item.codigo_item || 'N/A'}</p>
-                          </div>
-                          <div className="text-sm">
-                            <p><strong>Quantidade:</strong> {item.quantidade || 0} {item.unidade || ''}</p>
-                            <p><strong>Valor:</strong> R$ {item.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                          </div>
-                          <div className="text-sm">
-                            {(item as any).cupom_fiscal && (
-                              <>
-                                <p><strong>Empresa:</strong> {(item as any).cupom_fiscal.empresa_nome}</p>
-                                <p><strong>Data:</strong> {formatDate((item as any).cupom_fiscal.data_emissao)}</p>
-                              </>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <Badge variant="secondary">
-                              Item #{item.id}
-                            </Badge>
+                      <React.Fragment key={item.id || index}>
+                        
+                        {/* ✅ VERSÃO MOBILE */}
+                        <div className="block lg:hidden border rounded-lg p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                              <p className="font-semibold">{item.nome_item || 'Item sem nome'}</p>
+                              <p className="text-sm text-gray-600">Código: {item.codigo_item || 'N/A'}</p>
+                            </div>
+                            <div className="text-sm">
+                              <p><strong>Quantidade:</strong> {item.quantidade || 0} {item.unidade.toLowerCase() || ''}</p>
+                              <p><strong>Preço unitário:</strong> R$ {(item.valor_total/item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                              <p><strong>Valor total:</strong> R$ {item.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                            <div className="text-sm">
+                              {(item as any).cupom_fiscal && (
+                                <>
+                                  <p><strong>Empresa:</strong> {(item as any).cupom_fiscal.empresa_nome}</p>
+                                  <p><strong>Data:</strong> {formatDate((item as any).cupom_fiscal.data_emissao)}</p>
+                                </>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <Badge variant="secondary">
+                                Item #{item.id}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+
+                        {/* 💻 VERSÃO DESKTOP */}
+                        <div className="hidden lg:grid border rounded-lg p-4">
+                          <div className="text-sm grid grid-cols-8 gap-1">
+                            <div>
+                              <p className="text-gray-600">{item.codigo_item || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p>{item.nome_item || 'Item sem nome'}</p>
+                            </div>
+                            <div>
+                              <p>{item.quantidade || 0} {item.unidade.toLowerCase() || ''}</p>
+                            </div>
+                            <div>
+                              <p>R$ {(item.valor_total/item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                            <div>
+                              <p>R$ {item.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                            <div>
+                              {(item as any).cupom_fiscal && (
+                                <>
+                                  <p>{(item as any).cupom_fiscal.empresa_nome}</p>
+                                </>
+                              )}
+                            </div>
+                            <div>
+                              {(item as any).cupom_fiscal && (
+                                <>
+                                  <p>{formatDate((item as any).cupom_fiscal.data_emissao)}</p>
+                                </>
+                              )}
+                            </div>
+                            <div>
+                              <Badge variant="secondary">
+                                #{item.id}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                      </React.Fragment>
+                  ))}
+
                   </div>
                 ) : (
                   <p className="text-center text-gray-500 py-8">
