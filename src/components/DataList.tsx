@@ -289,7 +289,7 @@ const DataList: React.FC<DataListProps> = ({ onDataChanged }) => {
                     {itemsDetalhes.map((item, index) => (
                       <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                         <p className="font-medium">{item.nome_item}</p>
-                        <p>Qtd: {item.quantidade} {item.unidade} - R$ {item.valor_total?.toFixed(2)}</p>
+                        <p>Qtd: {item.quantidade} {item.unidade.toLowerCase()} - R$ {item.valor_total?.toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
