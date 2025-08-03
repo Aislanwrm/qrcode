@@ -24,18 +24,9 @@ export const parseNFCeURL = async (qrContent: string) => {
       }
     }
 
-    // Extrair outras informações básicas do QR code (como valor total)
-    const urlParts = qrContent.split('|');
-    let valorTotal = 0;
-    if (urlParts.length >= 4) {
-      valorTotal = parseFloat(urlParts[3]) || 0;
-      console.log('Valor total do QR:', valorTotal);
-    }
-
     // Dados básicos iniciais (serão complementados com dados extraídos do HTML)
     let nfceData: any = {
       chave_acesso: chaveAcesso,
-      valor_total: valorTotal,
       qr_content: qrContent,
       empresa_nome: '',
       empresa_cnpj: '',
@@ -53,6 +44,7 @@ export const parseNFCeURL = async (qrContent: string) => {
       data_emissao: new Date().toISOString().split('T')[0],
       hora_emissao: new Date().toTimeString().split(' ')[0],
       quantidade_itens: 0,
+      valor_total: 0,
       valor_pago: 0,
       forma_pagamento: '',
       destino_operacao: '', // Esperado formato numérico (1 ou 0)
@@ -75,11 +67,11 @@ export const parseNFCeURL = async (qrContent: string) => {
 
         // Tentar múltiplos proxies para contornar restrições CORS
         const proxies = [
-          `https://api.allorigins.win/get?url=${nfceUrl}`/*,
+          `https://api.allorigins.win/get?url=${nfceUrl}`,
           `https://api.codetabs.com/v1/proxy?quest=${nfceUrl}`,
-          `https://cors.bridged.cc/${nfceUrl}`,
-          `https://corsproxy.io/?${nfceUrl}`,
-          `https://cors-anywhere.herokuapp.com/${nfceUrl}`*/
+          `https://corsproxy.io/?${nfceUrl}`/*,
+          `https://cors-anywhere.herokuapp.com/${nfceUrl}`,
+          `https://cors.bridged.cc/${nfceUrl}`*/
         ];
 
         let htmlContent = '';
@@ -132,19 +124,6 @@ export const parseNFCeURL = async (qrContent: string) => {
       nfceData.empresa_nome = 'Dados básicos do QR Code';
     }
 
-    // Formatação dos preços: utiliza vírgula como separador decimal
-    /*nfceData.valor_total = parseInt(nfceData.valor_total);
-    nfceData.valor_pago = parseFloat(nfceData.valor_pago);
-    if (nfceData.base_calculo_icms) {
-      nfceData.base_calculo_icms = parseFloat(nfceData.base_calculo_icms);
-    }
-    if (nfceData.valor_icms) {
-      nfceData.valor_icms = parseFloat(nfceData.valor_icms);
-    }
-    if (nfceData.valor_total_servico) {
-      nfceData.valor_total_servico = parseFloat(nfceData.valor_total_servico);
-    }*/
-
     console.log('Dados finais extraídos:', nfceData);
     return nfceData;
 
@@ -181,7 +160,7 @@ const extractDataFromHTML = (html: string) => {
           extractedData.numero = match[1].replace(/^0+/, '');
           const complementoCandidate = match[2].trim();
           // Se existir complemento e o primeiro caractere não for uma letra, atribui-o
-          if (complementoCandidate && /^[A-Za-z]/.test(complementoCandidate)) {
+          if (complementoCandidate && /^[A-Za-z]/.test(complementoCandidate) && !/^N[AÃ]O INFORMADO$/i.test(complementoCandidate.trim())) {
             extractedData.complemento = complementoCandidate;
           }
         } else {
@@ -193,8 +172,12 @@ const extractDataFromHTML = (html: string) => {
           const CEPCidade = partes[3].split('-');
           if (CEPCidade.length >= 2) {
             if (CEPCidade && CEPCidade.length === 2) {
-              extractedData.cep = CEPCidade[0].trim();
+              extractedData.cep = CEPCidade[0].trim().replace(/[\/\.\-,\(\)%]/g, '');
               extractedData.cidade = CEPCidade[1].trim();
+            }// Caso tenha - no cep
+            if (CEPCidade && CEPCidade.length === 3) {
+              extractedData.cep = (CEPCidade[0].trim() + CEPCidade[1].trim()).replace(/[\/\.\-,\(\)%]/g, '');
+              extractedData.cidade = CEPCidade[2].trim();
             }
           }
         }
@@ -276,7 +259,7 @@ const extractDataFromHTML = (html: string) => {
               const cells = consumidorRow.querySelectorAll("td");
               if (cells.length >= 3) {
                 extractedData.consumidor_nome = cells[0].textContent.trim();
-                extractedData.consumidor_cpf = cells[1].textContent.trim();
+                extractedData.consumidor_cpf = cells[1].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
                 extractedData.consumidor_uf = cells[2].textContent.trim();
               }
             }
@@ -290,7 +273,7 @@ const extractDataFromHTML = (html: string) => {
       if (chavePanel) {
         const chaveTd = chavePanel.querySelector("table tr td");
         if (chaveTd) {
-          extractedData.chave_acesso = chaveTd.textContent.replace(/[^A-F0-9]/gi, '').trim();
+          extractedData.chave_acesso = chaveTd.textContent.replace(/[\/\.\-,\(\)%]/g, '').trim();//replace(/[^A-F0-9]/gi, '').trim();
           console.log('Chave extraída do accordion:', extractedData.chave_acesso);
         }
       }
@@ -317,8 +300,8 @@ const extractDataFromHTML = (html: string) => {
               const cells = emitenteRow.querySelectorAll("td");
               if (cells.length >= 4) {
                 extractedData.empresa_nome = cells[0].textContent.trim();
-                extractedData.empresa_cnpj = cells[1].textContent.trim();
-                extractedData.empresa_ie = cells[2].textContent.trim();
+                extractedData.empresa_cnpj = cells[1].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
+                extractedData.empresa_ie = cells[2].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
                 extractedData.uf = cells[3].textContent.trim();
               }
             }
@@ -342,9 +325,9 @@ const extractDataFromHTML = (html: string) => {
             if (notaRow) {
               const cells = notaRow.querySelectorAll("td");
               if (cells.length >= 4) {
-                extractedData.modelo = cells[0].textContent.trim();
-                extractedData.serie = cells[1].textContent.trim();
-                extractedData.numero_cupom = cells[2].textContent.trim();
+                extractedData.modelo = cells[0].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
+                extractedData.serie = cells[1].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
+                extractedData.numero_cupom = cells[2].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
                 const dataHora = cells[3].textContent.trim().split(' ');
                 // Converte data  para o formato ISO
                 const [dia, mes, ano] = dataHora[0].split('/');
@@ -372,7 +355,7 @@ const extractDataFromHTML = (html: string) => {
           if (protocoloTable) {
             const protocoloRow = protocoloTable.querySelector("tbody tr");
             if (protocoloRow) {
-              extractedData.protocolo = protocoloRow.querySelector("td")?.textContent.trim() || '';
+              extractedData.protocolo = protocoloRow.querySelector("td")?.textContent.trim().replace(/[\/\.\-,\(\)%]/g, '') || '';
             }
           }
         }
