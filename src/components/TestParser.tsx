@@ -24,8 +24,27 @@ const TestParser = () => {
     try {
       console.log('Iniciando teste de extração com URL:', testUrl);
       const data = await parseNFCeURL(testUrl);
+      // Campos essenciais para que todos os tenham sido extraídos
+      const camposEssenciais = [
+        'empresa_nome',
+        'empresa_cnpj',
+        'logradouro',
+        'cidade',
+        'cep',
+        'quantidade_itens',
+        'valor_total',
+      ];
+      // Verifica se todos os campos essenciais não estão vazios
+      const todosPresentes = camposEssenciais.every(
+        (campo) => data[campo] && String(data[campo]).trim() !== ''
+      );
+      if (todosPresentes) {
+        toast.success('Dados extraídos com sucesso! Verifique o console para detalhes.');
+      } else {
+        toast.warning('Dados parcialmente extraídos. Verifique o console para detalhes.');
+      }
       setExtractedData(data);
-      toast.success('Dados extraídos com sucesso! Verifique o console para detalhes.');
+
     } catch (error) {
       console.error('Erro no teste:', error);
       toast.error('Erro ao extrair dados: ' + (error as Error).message);
