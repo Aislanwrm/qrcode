@@ -165,7 +165,7 @@ const QRScannerComponent: React.FC<QRScannerProps> = ({ onDataScanned }) => {
               toast.success('NFC-e processada e salva com sucesso!');
               onDataScanned();
             } else {
-              toast.error('Erro ao salvar dados da NFC-e');
+              //toast.error('Erro ao salvar dados da NFC-e');
             }
           } else {
             console.log('⚠️ Dados incompletos, salvando dados básicos...');
