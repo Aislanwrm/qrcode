@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useCupomFiscal, CupomFiscal, ItemCompra } from '@/hooks/useCupomFiscal';
 import { Search, Filter, Eye, ShoppingCart, Calendar, DollarSign, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatCNPJ, formatCPF, formatCEP, formatCupom } from '@/utils/formatters';
+
 
 const DataViewer = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -137,6 +139,7 @@ const DataViewer = () => {
   };
 
   const viewCupomDetails = async (cupom: CupomFiscal) => {
+    cupom = formatCupom(cupom);
     setSelectedCupom(cupom);
     if (cupom.id) {
       const itens = await getAllItens(cupom.id);
@@ -413,7 +416,7 @@ const DataViewer = () => {
                               </div>
                             </div>
                             {cupom.empresa_cnpj && (
-                              <p className="text-xs text-gray-500 mt-1">CNPJ: {cupom.empresa_cnpj}</p>
+                              <p className="text-xs text-gray-500 mt-1">CNPJ: {formatCNPJ(cupom.empresa_cnpj)}</p>
                             )}
                           </div>
                           <Button 
