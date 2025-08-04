@@ -24,6 +24,9 @@ const DataViewer = () => {
 
   const { searchCupons, getAllItens } = useCupomFiscal();
 
+  const [mostrarCard, setMostrarCard] = useState(false);
+
+
   // Função para formatar data de yyyy-mm-dd para dd/mm/yyyy
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -150,107 +153,109 @@ const DataViewer = () => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader onClick={() => setMostrarCard(!mostrarCard)} className="cursor-pointer">
           <CardTitle className="flex items-center gap-2">
             <Eye className="w-5 h-5" />
             Visualizar Dados
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Seletor de modo de visualização */}
-          <div className="flex gap-2">
-            <Button 
-              variant={viewMode === 'cupons' ? 'default' : 'outline'}
-              onClick={() => {
-                setViewMode('cupons');
-                setSelectedCupom(null);
-              }}
-              className="flex items-center gap-2"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Cupons
-            </Button>
-            <Button 
-              variant={viewMode === 'itens' ? 'default' : 'outline'}
-              onClick={() => {
-                setViewMode('itens');
-                setSelectedCupom(null);
-              }}
-              className="flex items-center gap-2"
-            >
-              <DollarSign className="w-4 h-4" />
-              Todos os Itens
-            </Button>
-          </div>
+        {mostrarCard && (
+          <CardContent className="space-y-4">
+            {/* Seletor de modo de visualização */}
+            <div className="flex gap-2">
+              <Button 
+                variant={viewMode === 'cupons' ? 'default' : 'outline'}
+                onClick={() => {
+                  setViewMode('cupons');
+                  setSelectedCupom(null);
+                }}
+                className="flex items-center gap-2"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Cupons
+              </Button>
+              <Button 
+                variant={viewMode === 'itens' ? 'default' : 'outline'}
+                onClick={() => {
+                  setViewMode('itens');
+                  setSelectedCupom(null);
+                }}
+                className="flex items-center gap-2"
+              >
+                <DollarSign className="w-4 h-4" />
+                Todos os Itens
+              </Button>
+            </div>
 
-          {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Pesquisar</label>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Pesquisar</label>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <Input
+                    placeholder={viewMode === 'cupons' ? 'Empresa, CNPJ, chave...' : 'Empresa, Nome do item, código...'}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Data Inicial</label>
                 <Input
-                  placeholder={viewMode === 'cupons' ? 'Empresa, CNPJ, chave...' : 'Empresa, Nome do item, código...'}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  type="date"
+                  value={dateFilter.start}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">Data Inicial</label>
-              <Input
-                type="date"
-                value={dateFilter.start}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Data Final</label>
-              <Input
-                type="date"
-                value={dateFilter.end}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">Valor Mínimo</label>
-              <Input
-                type="number"
-                placeholder="0,00"
-                value={valueFilter.min}
-                onChange={(e) => setValueFilter(prev => ({ ...prev, min: e.target.value }))}
-              />
-            </div>
-
-            {!selectedCupom && (
+              
               <div>
-                <label className="text-sm font-medium mb-1 block">Valor Máximo</label>
+                <label className="text-sm font-medium mb-1 block">Data Final</label>
+                <Input
+                  type="date"
+                  value={dateFilter.end}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Valor Mínimo</label>
                 <Input
                   type="number"
-                  placeholder="999,99"
-                  value={valueFilter.max}
-                  onChange={(e) => setValueFilter(prev => ({ ...prev, max: e.target.value }))}
+                  placeholder="0,00"
+                  value={valueFilter.min}
+                  onChange={(e) => setValueFilter(prev => ({ ...prev, min: e.target.value }))}
                 />
               </div>
-            )}
-          </div>
 
-          <Button 
-            onClick={() => {
-              setSearchTerm('');
-              setDateFilter({ start: '', end: '' });
-              setValueFilter({ min: '', max: '' });
-            }}
-            variant="outline"
-            size="sm"
-          >
-            Limpar Filtros
-          </Button>
-        </CardContent>
+              {!selectedCupom && (
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Valor Máximo</label>
+                  <Input
+                    type="number"
+                    placeholder="999,99"
+                    value={valueFilter.max}
+                    onChange={(e) => setValueFilter(prev => ({ ...prev, max: e.target.value }))}
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button 
+              onClick={() => {
+                setSearchTerm('');
+                setDateFilter({ start: '', end: '' });
+                setValueFilter({ min: '', max: '' });
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Limpar Filtros
+            </Button>
+          </CardContent>
+        )}
       </Card>
 
       {/* Resultados */}
