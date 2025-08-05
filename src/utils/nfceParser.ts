@@ -75,35 +75,36 @@ export const parseNFCeURL = async (qrContent: string) => {
         ];
 
         let htmlContent = '';
-        try {
-          console.log('Tentando acesso direto à URL...');
-          const directResponse = await fetch(nfceUrl, { method: 'GET' });
-          htmlContent = await directResponse.text();
-          console.log('HTML obtido com acesso direto.');
-        } catch (directError) {
-          console.log('Acesso direto falhou:', directError);
+        for (const proxyUrl of proxies) {
+          try {
+            console.log('Tentando proxy:', proxyUrl);
+            const response = await fetch(proxyUrl, {
+              method: 'GET',
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+              }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              htmlContent = data.contents || data.content || data;
+              console.log('HTML obtido via proxy.');
+              break;
+            }
+          } catch (proxyError) {
+            console.log('Erro com proxy:', proxyError);
+            continue;
+          }
         }
+
         // Se os proxies não obtiverem resposta, tenta acesso direto
         if (!htmlContent) {
-          for (const proxyUrl of proxies) {
-            try {
-              console.log('Tentando proxy:', proxyUrl);
-              const response = await fetch(proxyUrl, {
-                method: 'GET',
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-                }
-              });
-              if (response.ok) {
-                const data = await response.json();
-                htmlContent = data.contents || data.content || data;
-                console.log('HTML obtido via proxy.');
-                break;
-              }
-            } catch (proxyError) {
-              console.log('Erro com proxy:', proxyError);
-              continue;
-            }
+          try {
+            console.log('Tentando acesso direto à URL...');
+            const directResponse = await fetch(nfceUrl, { method: 'GET' });
+            htmlContent = await directResponse.text();
+            console.log('HTML obtido com acesso direto.');
+          } catch (directError) {
+            console.log('Acesso direto falhou:', directError);
           }
         }
 
