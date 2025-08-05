@@ -160,7 +160,7 @@ const extractDataFromHTML = (html: string) => {
           extractedData.numero = match[1].replace(/^0+/, '');
           const complementoCandidate = match[2].trim();
           // Se existir complemento e o primeiro caractere não for uma letra, atribui-o
-          if (complementoCandidate && /^[A-Za-z]/.test(complementoCandidate) && !/^N[AÃ]O INFORMADO$/i.test(complementoCandidate.trim())) {
+          if (complementoCandidate && /^[A-Za-z]/.test(complementoCandidate) && !/n[ãa]o\s+informado/i.test(complementoCandidate.trim())) {
             extractedData.complemento = complementoCandidate;
           }
         } else {
@@ -173,9 +173,11 @@ const extractDataFromHTML = (html: string) => {
           if (CEPCidade.length >= 2) {
             if (CEPCidade && CEPCidade.length === 2) {
               extractedData.cep = CEPCidade[0].trim().replace(/[\/\.\-,\(\)%]/g, '');
+              extractedData.cep.length === 7 ? extractedData.cep = extractedData.cep+= '0' : extractedData.cep;
               extractedData.cidade = CEPCidade[1].trim();
             }// Caso tenha - no cep
             if (CEPCidade && CEPCidade.length === 3) {
+              // Verifica se o cep tem 7 digitos e acrescenta 0 no final
               extractedData.cep = (CEPCidade[0].trim() + CEPCidade[1].trim()).replace(/[\/\.\-,\(\)%]/g, '');
               extractedData.cidade = CEPCidade[2].trim();
             }
@@ -258,7 +260,7 @@ const extractDataFromHTML = (html: string) => {
             if (consumidorRow) {
               const cells = consumidorRow.querySelectorAll("td");
               if (cells.length >= 3) {
-                extractedData.consumidor_nome = cells[0].textContent.trim();
+                extractedData.consumidor_nome = !/n[ãa]o\s+informado/i.test(cells[0].textContent.trim()) ? cells[0].textContent.trim() : "";
                 extractedData.consumidor_cpf = cells[1].textContent.trim().replace(/[\/\.\-,\(\)%]/g, '');
                 extractedData.consumidor_uf = cells[2].textContent.trim();
               }
