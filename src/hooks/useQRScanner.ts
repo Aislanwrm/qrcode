@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import QrScanner from 'qr-scanner';
+import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
 
 interface UseQRScannerProps {
   onDataScanned: (data: string) => void;
@@ -85,25 +86,42 @@ export const useQRScanner = ({ onDataScanned, onStreamReady, currentCamera }: Us
       video.style.visibility = 'visible';
       video.style.opacity = '1';
       
-      qrScannerRef.current = new QrScanner(
-        video,
-        (result) => {
-          console.log('QR Code detectado:', result.data);
-          
-          // Parar o scanner imediatamente para evitar múltiplas leituras
-          if (qrScannerRef.current) {
-            qrScannerRef.current.pause();
-          }
-          
-          onDataScanned(result.data);
-        },
-        {
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          preferredCamera: currentCamera,
-          maxScansPerSecond: 1,
-        }
-      );
+qrScannerRef.current = new QrScanner(
+  video,
+  // O callback não é mais o segundo argumento.
+  // Ele agora vai para dentro do objeto de opções abaixo.
+  {
+    // --- SUAS OPÇÕES ANTERIORES ---
+    highlightScanRegion: true,
+    highlightCodeOutline: true,
+    preferredCamera: currentCamera,
+    maxScansPerSecond: 1,
+    worker: QrScannerWorkerPath,
+
+    // --- OTIMIZAÇÃO DA REGIÃO DE ESCANEAMENTO ---
+    calculateScanRegion: (video) => {
+      const regionSize = Math.round(0.7 * Math.min(video.videoWidth, video.videoHeight));
+      return {
+        x: Math.round((video.videoWidth - regionSize) / 2),
+        y: Math.round((video.videoHeight - regionSize) / 2),
+        width: regionSize,
+        height: regionSize
+      };
+    },
+
+    // --- MOVA O CALLBACK PARA CÁ, COM O NOME "onDecode" ---
+    onDecode: (result) => {
+      console.log('QR Code detectado:', result.data);
+      
+      // Parar o scanner imediatamente para evitar múltiplas leituras
+      if (qrScannerRef.current) {
+        qrScannerRef.current.pause();
+      }
+      
+      onDataScanned(result.data);
+    },
+  }
+);
       
       console.log('Iniciando scanner...');
       await qrScannerRef.current.start();
