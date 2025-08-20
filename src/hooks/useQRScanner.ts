@@ -86,25 +86,25 @@ export const useQRScanner = ({ onDataScanned, onStreamReady, currentCamera }: Us
       video.style.visibility = 'visible';
       video.style.opacity = '1';
       
-      qrScannerRef.current = new QrScanner(
-        video,
-        {
-          // Callback de sucesso
-          onDecode: (result) => {
-            console.log('QR Code detectado:', result.data);
-            if (qrScannerRef.current) {
-              qrScannerRef.current.pause();
-            }
-            onDataScanned(result.data);
-          },
+qrScannerRef.current = new QrScanner(
+  video,
+  {
+    // O callback de sucesso, agora dentro das opções
+    onDecode: (result) => {
+      console.log('QR Code detectado:', result.data);
+      if (qrScannerRef.current) {
+        qrScannerRef.current.pause();
+      }
+      onDataScanned(result.data);
+    },
 
-          // Apenas as suas opções originais
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          preferredCamera: currentCamera,
-          maxScansPerSecond: 1,
-        }
- );      
+    // Suas opções originais, sem nenhuma adição
+    highlightScanRegion: true,
+    highlightCodeOutline: true,
+    preferredCamera: currentCamera,
+    maxScansPerSecond: 1,
+  }
+);     
       console.log('Iniciando scanner...');
       await qrScannerRef.current.start();
       
