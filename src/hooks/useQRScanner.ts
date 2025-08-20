@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import QrScanner from 'qr-scanner';
-//import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
 
 interface UseQRScannerProps {
   onDataScanned: (data: string) => void;
@@ -86,25 +85,26 @@ export const useQRScanner = ({ onDataScanned, onStreamReady, currentCamera }: Us
       video.style.visibility = 'visible';
       video.style.opacity = '1';
       
-qrScannerRef.current = new QrScanner(
-  video,
-  {
-    // O callback de sucesso, agora dentro das opções
-    onDecode: (result) => {
-      console.log('QR Code detectado:', result.data);
-      if (qrScannerRef.current) {
-        qrScannerRef.current.pause();
-      }
-      onDataScanned(result.data);
-    },
-
-    // Suas opções originais, sem nenhuma adição
-    highlightScanRegion: true,
-    highlightCodeOutline: true,
-    preferredCamera: currentCamera,
-    maxScansPerSecond: 1,
-  }
-);     
+      qrScannerRef.current = new QrScanner(
+        video,
+        (result) => {
+          console.log('QR Code detectado:', result.data);
+          
+          // Parar o scanner imediatamente para evitar múltiplas leituras
+          if (qrScannerRef.current) {
+            qrScannerRef.current.pause();
+          }
+          
+          onDataScanned(result.data);
+        },
+        {
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          preferredCamera: currentCamera,
+          maxScansPerSecond: 1,
+        }
+      );
+      
       console.log('Iniciando scanner...');
       await qrScannerRef.current.start();
       
