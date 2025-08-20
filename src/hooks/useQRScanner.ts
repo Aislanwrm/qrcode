@@ -86,38 +86,25 @@ export const useQRScanner = ({ onDataScanned, onStreamReady, currentCamera }: Us
       video.style.visibility = 'visible';
       video.style.opacity = '1';
       
-qrScannerRef.current = new QrScanner(
-  video,
-  {
-    // Callback de sucesso
-    onDecode: (result) => {
-      console.log('QR Code detectado:', result.data);
-      if (qrScannerRef.current) {
-        qrScannerRef.current.pause();
-      }
-      onDataScanned(result.data);
-    },
+      qrScannerRef.current = new QrScanner(
+        video,
+        {
+          // Callback de sucesso
+          onDecode: (result) => {
+            console.log('QR Code detectado:', result.data);
+            if (qrScannerRef.current) {
+              qrScannerRef.current.pause();
+            }
+            onDataScanned(result.data);
+          },
 
-    // Opções básicas
-    highlightScanRegion: true,
-    highlightCodeOutline: true,
-    preferredCamera: currentCamera,
-    maxScansPerSecond: 1,
-
-    // Apenas a otimização da região de escaneamento
-    calculateScanRegion: (video) => {
-      // Foca a análise em um quadrado de 70% no centro do vídeo
-      const regionSize = Math.round(0.7 * Math.min(video.videoWidth, video.videoHeight));
-      return {
-        x: Math.round((video.videoWidth - regionSize) / 2),
-        y: Math.round((video.videoHeight - regionSize) / 2),
-        width: regionSize,
-        height: regionSize,
-      };
-    },
-  }
-);
-      
+          // Apenas as suas opções originais
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          preferredCamera: currentCamera,
+          maxScansPerSecond: 1,
+        }
+ );      
       console.log('Iniciando scanner...');
       await qrScannerRef.current.start();
       
